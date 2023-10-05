@@ -1,14 +1,17 @@
 #include <ScopedMemoryAllocations/Allocations.h>
 #include <thread>
 
+void* mem;
+
 void allocatingFunc()
 {
-    std::vector<int> v;
-    v.reserve(5);
+    realloc(mem, 25);
 }
 
 int main()
 {
+    mem = malloc(25);
+
     auto messageThread = []
     {
         //Won't assert on allocations:
