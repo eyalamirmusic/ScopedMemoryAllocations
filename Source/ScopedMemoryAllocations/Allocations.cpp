@@ -6,69 +6,30 @@
 
 namespace EA::Allocations
 {
-struct Status
+
+bool& getAllocStatus()
 {
-    std::thread::id id {};
-    bool canAllocate = true;
-};
-
-struct ThreadMap
-{
-    Status& get(std::thread::id id)
-    {
-        std::lock_guard guard(mutex);
-
-        for (size_t index = 0; index < actualSize; ++index)
-        {
-            auto& current = map[index];
-
-            if (current.id == id)
-                return current;
-        }
-
-        if (actualSize + 1 < map.size())
-        {
-            auto& current = map[actualSize];
-            current.id = id;
-            ++actualSize;
-
-            return current;
-        }
-
-        return map[0];
-    }
-
-    std::mutex mutex;
-
-    size_t actualSize = 0;
-    std::array<Status, 100000> map;
-};
-
-bool& getCurentStatus()
-{
-    static ThreadMap statusMap;
-    auto id = std::this_thread::get_id();
-
-    auto& status = statusMap.get(id);
-    return status.canAllocate;
+    thread_local bool canAlloc = true;
+    return canAlloc;
 }
+
 
 bool isAllowedToAllocate()
 {
-    return getCurentStatus();
+    return getAllocStatus();
 }
 
 void setAllowedToAllocate(bool canAllocate)
 {
-    getCurentStatus() = canAllocate;
+    getAllocStatus() = canAllocate;
 }
 
-Allocations::ScopedSetter::ScopedSetter()
+ScopedSetter::ScopedSetter()
 {
     setAllowedToAllocate(false);
 }
 
-Allocations::ScopedSetter::~ScopedSetter()
+ScopedSetter::~ScopedSetter()
 {
     setAllowedToAllocate(true);
 }
