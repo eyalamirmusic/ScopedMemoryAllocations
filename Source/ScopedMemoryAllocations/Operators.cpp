@@ -1,6 +1,7 @@
 #ifndef EA_SCOPED_ALLOCATIONS_DISABLE
 
 #include <new>
+#include <cstdlib>
 
 void* operator new(std::size_t size)
 {
