@@ -7,7 +7,8 @@ A tiny C++20 library for catching unwanted heap allocations on real-time threads
 
 void audioCallback(float* out, int frames)
 {
-    auto noAllocs = EA::Allocations::ScopedSetter();  // bans allocs until end of scope
+    // bans allocs until end of scope
+    auto noAllocs = EA::Allocations::ScopedSetter();  
 
     // any malloc / new in here trips the violation hook
     process(out, frames);
