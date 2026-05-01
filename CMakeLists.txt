@@ -1,7 +1,15 @@
-cmake_minimum_required(VERSION 3.26)
+cmake_minimum_required(VERSION 3.29)
 project(ScopedMemoryAllocations)
 
 set(CMAKE_CXX_STANDARD 20)
+
+option(Scoped_Allocations_Disable
+        "Disable allocation interposition; the API still exists but malloc/new are not hooked."
+        OFF)
+
+if (WIN32)
+    set(Scoped_Allocations_Disable ON)
+endif ()
 
 add_subdirectory(Source)
 
