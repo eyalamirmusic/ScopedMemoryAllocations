@@ -33,7 +33,7 @@ The library only adds its own examples and tests when it is the top-level CMake 
 
 void audioCallback(float* out, int frames)
 {
-    EA::Allocations::ScopedSetter noAllocs;  // bans allocs until end of scope
+    auto noAllocs = EA::Allocations::ScopedSetter();  // bans allocs until end of scope
 
     // any malloc / new in here trips the violation hook
     process(out, frames);

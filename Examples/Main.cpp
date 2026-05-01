@@ -4,9 +4,7 @@
 void* mem;
 
 void allocatingFunc()
-{
-    (void)realloc(mem, 25);
-}
+{ (void) realloc(mem, 25); }
 
 int main()
 {
@@ -21,7 +19,7 @@ int main()
     auto audioThread = []
     {
         //Will assert on any allocations, including malloc and new():
-        EA::Allocations::ScopedSetter setter;
+        auto setter = EA::Allocations::ScopedSetter();
         allocatingFunc();
     };
 

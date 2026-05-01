@@ -23,6 +23,8 @@ CI lives in `.github/workflows/ci.yml` and runs Ninja-driven builds across macOS
 
 Code style is enforced by `_clang-format` and `.clang-tidy` at the repo root — apply `clang-format` to any new/edited source.
 
+Variable declarations in this codebase follow the "almost always auto" style: `auto var = Type()` (or `auto var = expr;` when the right-hand side already carries the type). Use `auto*` for pointer locals, and prefer `auto x = Type{value}` over `Type x = value` / `Type x(value)`. This applies to library, test, and example code; file-scope `extern "C"` function-pointer declarations in `Malloc.cpp` are an exception (`auto` would just push the signature into a `static_cast`).
+
 ## Architecture
 
 The library is a thread-scoped allocation guard for real-time threads (the canonical use case is an audio callback that must not allocate). It is intentionally tiny: three `.cpp` files plus one header in `Source/ScopedMemoryAllocations/`, exposed as the CMake INTERFACE target `AllocationsChecker`.

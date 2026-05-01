@@ -8,7 +8,7 @@ namespace EA::Allocations
 
 bool& getAllocStatus()
 {
-    thread_local bool canAlloc = true;
+    thread_local auto canAlloc = true;
     return canAlloc;
 }
 
@@ -16,47 +16,39 @@ ViolationHandler defaultHandler()
 {
     return []
     {
-        assert(false && "Disallowed allocation while EA::Allocations::ScopedSetter was active");
+        assert(
+            false
+            && "Disallowed allocation while EA::Allocations::ScopedSetter was active");
     };
 }
 
 ViolationHandler& getHandler()
 {
-    static ViolationHandler handler = defaultHandler();
+    static auto handler = defaultHandler();
     return handler;
 }
 
 bool isAllowedToAllocate()
-{
-    return getAllocStatus();
-}
+{ return getAllocStatus(); }
 
 void setAllowedToAllocate(bool canAllocate)
-{
-    getAllocStatus() = canAllocate;
-}
+{ getAllocStatus() = canAllocate; }
 
 void setViolationHandler(ViolationHandler handler)
-{
-    getHandler() = handler ? std::move(handler) : defaultHandler();
-}
+{ getHandler() = handler ? std::move(handler) : defaultHandler(); }
 
 void onAllocationViolation()
 {
     auto& flag = getAllocStatus();
-    const bool previous = flag;
+    const auto previous = flag;
     flag = true;
     getHandler()();
     flag = previous;
 }
 
 ScopedSetter::ScopedSetter()
-{
-    setAllowedToAllocate(false);
-}
+{ setAllowedToAllocate(false); }
 
 ScopedSetter::~ScopedSetter()
-{
-    setAllowedToAllocate(true);
-}
+{ setAllowedToAllocate(true); }
 } // namespace EA::Allocations
