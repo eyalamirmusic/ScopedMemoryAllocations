@@ -1,3 +1,5 @@
+#ifndef EA_SCOPED_ALLOCATIONS_DISABLE
+
 #include <new>
 
 void* operator new(std::size_t size)
@@ -29,3 +31,5 @@ void operator delete[](void* ptr) noexcept
 {
     free(ptr);
 }
+
+#endif // !EA_SCOPED_ALLOCATIONS_DISABLE

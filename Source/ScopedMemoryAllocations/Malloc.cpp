@@ -1,3 +1,5 @@
+#ifndef EA_SCOPED_ALLOCATIONS_DISABLE
+
 #include "Allocations.h"
 
 #include <cstdlib>
@@ -52,3 +54,5 @@ extern "C"
         callMem(originalFree, "free", ptr);
     }
 }
+
+#endif // !EA_SCOPED_ALLOCATIONS_DISABLE

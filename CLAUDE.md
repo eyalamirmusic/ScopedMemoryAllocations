@@ -17,7 +17,7 @@ Tests live in `Tests/` and use [NanoTest](https://github.com/eyalamirmusic/NanoT
 
 The tests cover the flag/RAII/thread-local mechanics, that the interposed allocators forward correctly when allocation is allowed, and the violation-handler hook (banned `malloc`/`new` route through an installed `std::function`). The default-handler assert path is left to `Examples/Main.cpp`, since asserting would abort the test binary.
 
-`Examples/` and `Tests/` are only added when this is the top-level CMake project (`PROJECT_IS_TOP_LEVEL`). Consumers that pull this in via `add_subdirectory` / `FetchContent` get only the `AllocationsChecker` library and won't trigger the NanoTest fetch.
+`Examples/` and `Tests/` are only added when this is the top-level CMake project (`PROJECT_IS_TOP_LEVEL`) **and** interposition is live (i.e. not Windows, and the disable option is OFF). Consumers that pull this in via `add_subdirectory` / `FetchContent` get only the `AllocationsChecker` library and won't trigger the NanoTest fetch. Tests assume real interposition; they will fail if run with the hooks compiled out.
 
 Code style is enforced by `_clang-format` and `.clang-tidy` at the repo root — apply `clang-format` to any new/edited source.
 
@@ -29,9 +29,11 @@ The mechanism has three layers, and changes usually need to keep all three consi
 
 1. **Per-thread allow flag (`Allocations.{h,cpp}`).** A `thread_local bool` accessed via `getAllocStatus()`. `EA::Allocations::ScopedSetter` is RAII over this flag — constructing it on a thread bans allocations until it goes out of scope. Because the flag is `thread_local`, banning on the audio thread does not affect the message thread (see `Examples/Main.cpp`).
 
-2. **libc interposition (`Malloc.cpp`).** Defines `extern "C"` `malloc`/`calloc`/`realloc`/`free` that resolve the real libc symbols lazily via `dlsym(RTLD_NEXT, ...)` and call `EA::Allocations::onAllocationViolation()` if the flag is currently `false` before forwarding. This is why the library links against `dl` and currently only works where `RTLD_NEXT` is available (Linux/macOS — not Windows). The lazy `initFunc` pattern is required because `dlsym` itself can be called early in process startup before any state is set up.
+2. **libc interposition (`Malloc.cpp`).** Defines `extern "C"` `malloc`/`calloc`/`realloc`/`free` that resolve the real libc symbols lazily via `dlsym(RTLD_NEXT, ...)` and call `EA::Allocations::onAllocationViolation()` if the flag is currently `false` before forwarding. The lazy `initFunc` pattern is required because `dlsym` itself can be called early in process startup before any state is set up.
 
 3. **Global `new`/`delete` (`Operators.cpp`).** Routes `operator new`/`operator new[]`/`operator delete`/`operator delete[]` through the interposed `malloc`/`free`, so the same assert fires for C++ allocations.
+
+**Disabling interposition.** The whole bodies of `Malloc.cpp` and `Operators.cpp` are wrapped in `#ifndef EA_SCOPED_ALLOCATIONS_DISABLE`. CMake defines that macro on the `AllocationsChecker` interface target whenever (a) we're building for Windows (`dlfcn.h`/`RTLD_NEXT` aren't available there) or (b) the `Scoped_Allocations_Disable` option is `ON`. In that mode the library is API-compatible — `ScopedSetter`, `setViolationHandler`, etc. still compile and run — but no allocations are intercepted. CMake also skips the `dl` link on Windows. `Allocations.cpp` always compiles unchanged.
 
 **Violation hook.** `setViolationHandler(std::function<void()>)` overrides what happens on a banned allocation; passing an empty handler restores the default (an `assert`). Tests use this to record violations instead of aborting. `onAllocationViolation()` saves the current allow-flag, flips it to `true` for the duration of the handler call (so the handler can log/record without re-tripping itself), then restores it — so the call is transparent whether triggered from a banned allocation site or invoked directly.
 
