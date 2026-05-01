@@ -106,3 +106,7 @@ ctest --test-dir build -R "name"
 ```
 
 The example program (`./build/Examples/Example`) intentionally aborts on its "audio thread" to demonstrate the default assert behaviour.
+
+## License
+
+MIT — see [LICENSE.txt](LICENSE.txt).
