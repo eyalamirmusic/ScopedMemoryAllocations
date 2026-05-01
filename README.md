@@ -24,6 +24,10 @@ Supported on Linux and macOS. On Windows the library compiles to a no-op so the 
 ## Consume with FetchContent
 
 ```cmake
+# flip to OFF for a no-op build (e.g. release).
+# See "Disabling interposition" below for the rationale.
+set(SCOPED_ALLOCATIONS_TEST ON)
+
 include(FetchContent)
 FetchContent_Declare(
         ScopedMemoryAllocations
@@ -65,12 +69,14 @@ This is what makes the library testable: install a handler that bumps a counter,
 
 ## Disabling interposition
 
-The library becomes a no-op in two cases:
+Interposition is controlled by the `SCOPED_ALLOCATIONS_TEST` CMake option shown above. It becomes a no-op in two cases:
 
-- **Automatically on Windows**, since `dlsym(RTLD_NEXT, ...)` isn't available there.
-- **Manually**, by passing `-DScoped_Allocations_Disable=ON` at configure time.
+- **Automatically on Windows**, since `dlsym(RTLD_NEXT, ...)` isn't available there — the option is forced `OFF`.
+- **Manually**, by setting `SCOPED_ALLOCATIONS_TEST=OFF`.
 
 In both cases the API still compiles and links — calls just don't intercept anything, so cross-platform code needs no `#ifdef` chains.
+
+Treat this as a global, project-wide switch rather than a per-target one. Interposing every `malloc` / `free` / `new` / `delete` adds a `dlsym` lookup and a thread-local check to every allocation in the process, which is significant overhead — you usually want it on for a focused debug/CI profile and off everywhere else, not toggled per consumer.
 
 ## Building and running the tests
 

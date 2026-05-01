@@ -1,4 +1,4 @@
-#ifndef EA_SCOPED_ALLOCATIONS_DISABLE
+#ifdef EA_SCOPED_ALLOCATIONS_TEST
 
 #include "Allocations.h"
 
@@ -54,4 +54,4 @@ extern "C"
     }
 }
 
-#endif // !EA_SCOPED_ALLOCATIONS_DISABLE
+#endif // EA_SCOPED_ALLOCATIONS_TEST

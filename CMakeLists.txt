@@ -3,17 +3,20 @@ project(ScopedMemoryAllocations)
 
 set(CMAKE_CXX_STANDARD 20)
 
-option(Scoped_Allocations_Disable
-        "Disable allocation interposition; the API still exists but malloc/new are not hooked."
-        OFF)
+option(SCOPED_ALLOCATIONS_TEST
+        "Enable allocation interposition; when OFF the API still exists but malloc/new are not hooked."
+        ON)
 
+# Interposition relies on dlsym(RTLD_NEXT, ...), which Windows lacks. Force the
+# flag off so the library degrades to its API-only stub and the Examples/Tests
+# gate below skips targets that use POSIX-only calls.
 if (WIN32)
-    set(Scoped_Allocations_Disable ON)
+    set(SCOPED_ALLOCATIONS_TEST OFF)
 endif ()
 
 add_subdirectory(Source)
 
-if (PROJECT_IS_TOP_LEVEL AND NOT Scoped_Allocations_Disable)
+if (PROJECT_IS_TOP_LEVEL AND SCOPED_ALLOCATIONS_TEST)
     set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     add_subdirectory(Examples)
 

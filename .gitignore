@@ -3,6 +3,7 @@
 Makefile
 /build
 /out
+/.cache
 .vs
 CMakeSettings.json
 

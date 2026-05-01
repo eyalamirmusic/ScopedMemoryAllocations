@@ -4,9 +4,8 @@ target_sources(AllocationsChecker INTERFACE
         ScopedMemoryAllocations/Allocations.cpp
         ScopedMemoryAllocations/Operators.cpp)
 
-if (Scoped_Allocations_Disable)
-    target_compile_definitions(AllocationsChecker INTERFACE EA_SCOPED_ALLOCATIONS_DISABLE)
-else ()
+if (SCOPED_ALLOCATIONS_TEST)
+    target_compile_definitions(AllocationsChecker INTERFACE EA_SCOPED_ALLOCATIONS_TEST)
     target_link_libraries(AllocationsChecker INTERFACE dl)
 endif ()
 

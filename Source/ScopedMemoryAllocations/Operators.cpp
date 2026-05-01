@@ -1,4 +1,4 @@
-#ifndef EA_SCOPED_ALLOCATIONS_DISABLE
+#ifdef EA_SCOPED_ALLOCATIONS_TEST
 
 #include <new>
 #include <cstdlib>
@@ -61,4 +61,4 @@ void operator delete(void* ptr, std::size_t, std::align_val_t) noexcept
 void operator delete[](void* ptr, std::size_t, std::align_val_t) noexcept
 { free(ptr); }
 
-#endif // !EA_SCOPED_ALLOCATIONS_DISABLE
+#endif // EA_SCOPED_ALLOCATIONS_TEST
