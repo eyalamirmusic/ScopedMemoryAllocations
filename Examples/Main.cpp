@@ -5,7 +5,7 @@ void* mem;
 
 void allocatingFunc()
 {
-    realloc(mem, 25);
+    (void)realloc(mem, 25);
 }
 
 int main()

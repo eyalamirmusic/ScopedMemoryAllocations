@@ -5,8 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(Source)
 
-option(Scoped_Allocations_Examples "" ON)
-
-if (Scoped_Allocations_Examples)
+if (PROJECT_IS_TOP_LEVEL)
     add_subdirectory(Examples)
+
+    enable_testing()
+    add_subdirectory(Tests)
 endif ()
