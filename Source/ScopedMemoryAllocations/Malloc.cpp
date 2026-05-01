@@ -2,7 +2,6 @@
 
 #include <cstdlib>
 #include <dlfcn.h>
-#include <cassert>
 #include <utility>
 
 template <typename FuncType>
@@ -21,7 +20,8 @@ template <typename FuncType, typename... Args>
 auto callMem(FuncType& func, const char* name, Args&&... args)
 {
     initFunc(func, name);
-    assert(EA::Allocations::isAllowedToAllocate());
+    if (!EA::Allocations::isAllowedToAllocate())
+        EA::Allocations::onAllocationViolation();
     return func(std::forward<Args>(args)...);
 }
 

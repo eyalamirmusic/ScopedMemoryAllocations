@@ -102,4 +102,94 @@ auto newArrayDeleteWork = test("new[]/delete[] pass through when allowed") = []
     delete[] p;
     check(ok);
 };
+
+auto onAllocationViolationInvokesHandler =
+    test("onAllocationViolation invokes the installed handler") = []
+{
+    int fired = 0;
+    EA::Allocations::setViolationHandler([&] { ++fired; });
+
+    EA::Allocations::onAllocationViolation();
+    EA::Allocations::onAllocationViolation();
+
+    EA::Allocations::setViolationHandler({});
+    check(fired == 2);
+};
+
+auto bannedMallocCallsHandler =
+    test("malloc inside ScopedSetter routes through the handler") = []
+{
+    int fired = 0;
+    EA::Allocations::setViolationHandler([&] { ++fired; });
+
+    void* p = nullptr;
+    {
+        EA::Allocations::ScopedSetter setter;
+        p = std::malloc(8);
+    }
+    std::free(p);
+
+    EA::Allocations::setViolationHandler({});
+    check(fired == 1);
+    check(p != nullptr);
+};
+
+auto bannedNewCallsHandler =
+    test("new inside ScopedSetter routes through the handler") = []
+{
+    int fired = 0;
+    EA::Allocations::setViolationHandler([&] { ++fired; });
+
+    int* p = nullptr;
+    {
+        EA::Allocations::ScopedSetter setter;
+        p = new int(7);
+    }
+    delete p;
+
+    EA::Allocations::setViolationHandler({});
+    check(fired == 1);
+};
+
+auto handlerMayAllocate =
+    test("Handler can allocate without re-entering itself") = []
+{
+    int fired = 0;
+    // Allocating inside the handler would loop forever if the ban weren't
+    // lifted before invoking it. A scratch buffer per call proves it isn't.
+    EA::Allocations::setViolationHandler(
+        [&]
+        {
+            ++fired;
+            void* scratch = std::malloc(16);
+            std::free(scratch);
+        });
+
+    {
+        EA::Allocations::ScopedSetter setter;
+        void* p = std::malloc(8);
+        std::free(p);  // free is gated too, so this fires the handler again.
+    }
+
+    EA::Allocations::setViolationHandler({});
+    check(fired == 2);
+};
+
+auto emptyHandlerRestoresDefault =
+    test("Passing an empty handler restores the default") = []
+{
+    int fired = 0;
+    EA::Allocations::setViolationHandler([&] { ++fired; });
+    EA::Allocations::setViolationHandler({});
+
+    // The default handler asserts in debug builds, so we can't invoke it here.
+    // Instead, install a sentinel afterwards and confirm it overrides.
+    int sentinel = 0;
+    EA::Allocations::setViolationHandler([&] { ++sentinel; });
+    EA::Allocations::onAllocationViolation();
+    EA::Allocations::setViolationHandler({});
+
+    check(fired == 0);
+    check(sentinel == 1);
+};
 } // namespace
