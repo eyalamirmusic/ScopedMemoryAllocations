@@ -17,7 +17,9 @@ Tests live in `Tests/` and use [NanoTest](https://github.com/eyalamirmusic/NanoT
 
 The tests cover the flag/RAII/thread-local mechanics, that the interposed allocators forward correctly when allocation is allowed, and the violation-handler hook (banned `malloc`/`new` route through an installed `std::function`). The default-handler assert path is left to `Examples/Main.cpp`, since asserting would abort the test binary.
 
-`Examples/` and `Tests/` are only added when this is the top-level CMake project (`PROJECT_IS_TOP_LEVEL`) **and** interposition is live (i.e. not Windows, and the disable option is OFF). Consumers that pull this in via `add_subdirectory` / `FetchContent` get only the `AllocationsChecker` library and won't trigger the NanoTest fetch. Tests assume real interposition; they will fail if run with the hooks compiled out.
+`Examples/` and `Tests/` are only added when this is the top-level CMake project (`PROJECT_IS_TOP_LEVEL`) **and** the `Scoped_Allocations_Disable` option is OFF. Consumers that pull this in via `add_subdirectory` / `FetchContent` get only the `AllocationsChecker` library and won't trigger the NanoTest fetch. The gate intentionally does *not* exclude Windows: there the interposition macro is auto-defined by the build, so the test/example targets still compile (they consume the no-op `.cpp` files and verify everything links) — but the runtime tests will fail if executed, since nothing is actually intercepted. The CI workflow skips `ctest` on Windows for this reason.
+
+CI lives in `.github/workflows/ci.yml` and runs Ninja-driven builds across macOS Universal (arm64+x86_64, deployment target 10.13), iOS (arm64 cross-compile), Linux GCC, Linux Clang, Windows Clang, and Windows MSVC. Tests run on macOS and Linux only.
 
 Code style is enforced by `_clang-format` and `.clang-tidy` at the repo root — apply `clang-format` to any new/edited source.
 
