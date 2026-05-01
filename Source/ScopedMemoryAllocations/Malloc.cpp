@@ -33,25 +33,24 @@ extern "C"
     void* (*originalMalloc)(size_t) = nullptr;
     void* (*originalRealloc)(void*, size_t) = nullptr;
     void (*originalFree)(void*) = nullptr;
+    int (*originalPosixMemalign)(void**, size_t, size_t) = nullptr;
 
     void* malloc(size_t size)
-    {
-        return callMem(originalMalloc, "malloc", size);
-    }
+    { return callMem(originalMalloc, "malloc", size); }
 
     void* calloc(size_t size, size_t count)
-    {
-        return callMem(originalCalloc, "calloc", size, count);
-    }
+    { return callMem(originalCalloc, "calloc", size, count); }
 
     void* realloc(void* ptr, size_t size)
-    {
-        return callMem(originalRealloc, "realloc", ptr, size);
-    }
+    { return callMem(originalRealloc, "realloc", ptr, size); }
 
     void free(void* ptr)
+    { callMem(originalFree, "free", ptr); }
+
+    int posix_memalign(void** memptr, size_t alignment, size_t size)
     {
-        callMem(originalFree, "free", ptr);
+        return callMem(
+            originalPosixMemalign, "posix_memalign", memptr, alignment, size);
     }
 }
 

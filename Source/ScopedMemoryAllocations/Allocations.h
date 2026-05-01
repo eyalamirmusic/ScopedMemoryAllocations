@@ -22,6 +22,9 @@ struct ScopedSetter
 {
     ScopedSetter();
     ~ScopedSetter();
+
+private:
+    bool previous;
 };
 
 } // namespace EA::Allocations

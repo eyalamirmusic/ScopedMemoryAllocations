@@ -47,8 +47,9 @@ void onAllocationViolation()
 }
 
 ScopedSetter::ScopedSetter()
+    : previous(getAllocStatus())
 { setAllowedToAllocate(false); }
 
 ScopedSetter::~ScopedSetter()
-{ setAllowedToAllocate(true); }
+{ setAllowedToAllocate(previous); }
 } // namespace EA::Allocations

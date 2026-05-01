@@ -191,4 +191,62 @@ auto emptyHandlerRestoresDefault =
     check(fired == 0);
     check(sentinel == 1);
 };
+
+auto nestedScopedSetterPreservesOuterBan = test(
+    "Nested ScopedSetter restores the outer flag, not unconditionally true") = []
+{
+    {
+        auto outer = EA::Allocations::ScopedSetter();
+        {
+            auto inner = EA::Allocations::ScopedSetter();
+            check(!EA::Allocations::isAllowedToAllocate());
+        }
+        // After ~inner, outer's ban must still hold.
+        check(!EA::Allocations::isAllowedToAllocate());
+    }
+    check(EA::Allocations::isAllowedToAllocate());
+};
+
+auto alignedNewIsCaught =
+    test("Aligned new inside ScopedSetter routes through the handler") = []
+{
+    struct alignas(64) Aligned
+    {
+        char data[128];
+    };
+
+    auto fired = 0;
+    EA::Allocations::setViolationHandler([&] { ++fired; });
+
+    auto* p = static_cast<Aligned*>(nullptr);
+    {
+        auto setter = EA::Allocations::ScopedSetter();
+        p = new Aligned();
+    }
+    const auto aligned =
+        (reinterpret_cast<std::uintptr_t>(p) % alignof(Aligned)) == 0;
+    delete p;
+
+    EA::Allocations::setViolationHandler({});
+    check(fired == 1);
+    check(aligned);
+};
+
+auto posixMemalignIsCaught =
+    test("posix_memalign inside ScopedSetter routes through the handler") = []
+{
+    auto fired = 0;
+    EA::Allocations::setViolationHandler([&] { ++fired; });
+
+    auto* p = static_cast<void*>(nullptr);
+    {
+        auto setter = EA::Allocations::ScopedSetter();
+        (void) posix_memalign(&p, 64, 128);
+    }
+    std::free(p);
+
+    EA::Allocations::setViolationHandler({});
+    check(fired == 1);
+    check(p != nullptr);
+};
 } // namespace
