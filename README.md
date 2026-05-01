@@ -1,12 +1,24 @@
 # ScopedMemoryAllocations
 
-A tiny C++20 library for catching unwanted heap allocations on real-time threads (audio callbacks, render loops, ISRs that share state with userspace, etc.).
+A tiny C++20 library for catching unwanted heap allocations on real-time threads (audio callbacks, render loops, etc.).
 
-Mark a thread or scope as "no allocations allowed", and any subsequent `malloc` / `calloc` / `realloc` / `free` / `new` / `delete` will route through a hook of your choice. The default hook asserts; for tests you can install your own callback.
+```cpp
+#include <ScopedMemoryAllocations/Allocations.h>
 
-The flag is `thread_local`, so banning allocations on the audio thread does not affect the message thread.
+void audioCallback(float* out, int frames)
+{
+    auto noAllocs = EA::Allocations::ScopedSetter();  // bans allocs until end of scope
 
-Supported platforms: Linux and macOS (uses `dlsym(RTLD_NEXT, ...)`). Compiles to a no-op on Windows so the same code can build cross-platform; see [Disabling interposition](#disabling-interposition) below.
+    // any malloc / new in here trips the violation hook
+    process(out, frames);
+}
+```
+
+The library hooks `malloc` / `calloc` / `realloc` / `free` and the global `new` / `delete` operators, so violations are caught **anywhere on the thread** — including inside third-party libraries you don't control. The default hook asserts; install your own to log, record, or trap.
+
+The ban is `thread_local`, so flagging the audio thread doesn't affect the message thread.
+
+Supported on Linux and macOS. On Windows the library compiles to a no-op so the same source builds cross-platform (see [Disabling interposition](#disabling-interposition)).
 
 ## Consume with FetchContent
 
@@ -22,25 +34,11 @@ FetchContent_MakeAvailable(ScopedMemoryAllocations)
 target_link_libraries(MyTarget PRIVATE AllocationsChecker)
 ```
 
-`AllocationsChecker` is an `INTERFACE` target. Its source files (the `malloc`/`new` overrides) are compiled directly into your target — this is required for symbol interposition to work reliably with the linker.
+`AllocationsChecker` is an `INTERFACE` target — its sources are compiled directly into your target so symbol interposition works reliably. Examples and tests only build when this is the top-level project, so `FetchContent` consumers don't drag in extra binaries.
 
-The library only adds its own examples and tests when it is the top-level CMake project, so consuming it via `FetchContent` won't drag in NanoTest or build extra binaries.
+## Manual control
 
-## Basic usage
-
-```cpp
-#include <ScopedMemoryAllocations/Allocations.h>
-
-void audioCallback(float* out, int frames)
-{
-    auto noAllocs = EA::Allocations::ScopedSetter();  // bans allocs until end of scope
-
-    // any malloc / new in here trips the violation hook
-    process(out, frames);
-}
-```
-
-Manual control is also available if RAII doesn't fit your call structure:
+If RAII doesn't fit your call structure:
 
 ```cpp
 EA::Allocations::setAllowedToAllocate(false);
@@ -48,46 +46,30 @@ EA::Allocations::setAllowedToAllocate(false);
 EA::Allocations::setAllowedToAllocate(true);
 ```
 
-The flag lives in `thread_local` storage, so each thread carries its own state. Banning on one thread never affects another.
-
 ## Custom violation hooks
 
-The default behaviour on a banned allocation is `assert(false)`. For tests, logging, or release-mode enforcement, install your own handler:
+The default behaviour on a banned allocation is `assert(false)` (and so compiles out under `NDEBUG`). For tests, logging, or release-mode enforcement, install your own:
 
 ```cpp
-#include <ScopedMemoryAllocations/Allocations.h>
-
 EA::Allocations::setViolationHandler([] {
-    // record, log, breakpoint, throw — whatever you need
     std::fprintf(stderr, "disallowed allocation!\n");
 });
+
+EA::Allocations::setViolationHandler({});  // empty restores the default
 ```
 
-Pass an empty `std::function` to restore the default:
-
-```cpp
-EA::Allocations::setViolationHandler({});
-```
-
-The handler is invoked with allocation **temporarily re-enabled** on the current thread, so it is free to allocate (logging, formatting, building a stack trace) without recursing into itself. The previous flag value is restored when the handler returns.
+The handler runs with allocation **temporarily re-enabled** on the current thread, so it can freely allocate (logging, formatting, capturing a stack trace) without recursing into itself.
 
 This is what makes the library testable: install a handler that bumps a counter, run the code under test, assert the counter went up. See `Tests/Tests.cpp` for examples.
 
 ## Disabling interposition
 
-Two ways to turn the library into a no-op:
+The library becomes a no-op in two cases:
 
-- **Automatically on Windows.** The `dlsym(RTLD_NEXT, ...)` mechanism doesn't exist on Windows, so the build defines `EA_SCOPED_ALLOCATIONS_DISABLE` for you. The API (`ScopedSetter`, `setViolationHandler`, etc.) still compiles and links — calls just don't intercept anything. This lets cross-platform code use the same headers without `#ifdef` chains.
+- **Automatically on Windows**, since `dlsym(RTLD_NEXT, ...)` isn't available there.
+- **Manually**, by passing `-DScoped_Allocations_Disable=ON` at configure time.
 
-- **Manually, on supported platforms.** Pass `-DScoped_Allocations_Disable=ON` at configure time:
-
-  ```sh
-  cmake -DScoped_Allocations_Disable=ON ...
-  ```
-
-  Same effect: `EA_SCOPED_ALLOCATIONS_DISABLE` is defined on the `AllocationsChecker` interface, the `malloc` / `new` overrides become empty, and `dl` is no longer linked.
-
-Either way, source code that uses `EA::Allocations::ScopedSetter` etc. continues to compile unchanged — it just doesn't catch anything at runtime.
+In both cases the API still compiles and links — calls just don't intercept anything, so cross-platform code needs no `#ifdef` chains.
 
 ## Building and running the tests
 
@@ -97,15 +79,7 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-Tests use [NanoTest](https://github.com/eyalamirmusic/NanoTest), pulled in via `FetchContent`. Each `nano::test(...)` is registered as its own CTest entry, so a single test can be run with:
-
-```sh
-./build/Tests/ScopedAllocationsTests --test "name"
-# or
-ctest --test-dir build -R "name"
-```
-
-The example program (`./build/Examples/Example`) intentionally aborts on its "audio thread" to demonstrate the default assert behaviour.
+Tests use [NanoTest](https://github.com/eyalamirmusic/NanoTest), pulled in via `FetchContent`. Each `nano::test(...)` is its own CTest entry — run one with `ctest --test-dir build -R "name"`.
 
 ## License
 
