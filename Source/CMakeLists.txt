@@ -7,6 +7,14 @@ target_sources(AllocationsChecker INTERFACE
 if (SCOPED_ALLOCATIONS_TEST)
     target_compile_definitions(AllocationsChecker INTERFACE EA_SCOPED_ALLOCATIONS_TEST)
     target_link_libraries(AllocationsChecker INTERFACE dl)
+
+    if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        target_sources(AllocationsChecker INTERFACE
+                ScopedMemoryAllocations/Malloc-Linux.cpp)
+    else ()
+        target_sources(AllocationsChecker INTERFACE
+                ScopedMemoryAllocations/Malloc-Default.cpp)
+    endif ()
 endif ()
 
 target_include_directories(AllocationsChecker INTERFACE ${CMAKE_CURRENT_LIST_DIR})
