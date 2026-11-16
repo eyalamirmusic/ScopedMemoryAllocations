@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <cstdlib>
+#include <new>
 #include <thread>
 
 using namespace nano;
@@ -230,6 +231,24 @@ auto alignedNewIsCaught =
     EA::Allocations::setViolationHandler({});
     check(fired == 1);
     check(aligned);
+};
+
+auto smallAlignedNewWorks =
+    test("Aligned new below pointer alignment allocates") = []
+{
+    // Alignments below sizeof(void*) are valid for aligned new but not for
+    // posix_memalign. The nothrow form is how LLVM's allocate_buffer asks.
+    constexpr auto align = std::align_val_t {4};
+
+    auto* p = ::operator new(16, align, std::nothrow);
+    const auto ok = (p != nullptr);
+    ::operator delete(p, align);
+
+    auto* q = ::operator new[](16, align);
+    ::operator delete[](q, align);
+
+    check(ok);
+    check(q != nullptr);
 };
 
 auto posixMemalignIsCaught =
